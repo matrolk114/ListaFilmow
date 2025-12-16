@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
-<title>Lista filmów</title>
+<title>Moje Filmy</title>
 
 <style>
 /* LOADING SCREEN */
@@ -141,7 +141,7 @@ input, textarea, button {
 <!-- LOADING -->
 <div id="loadingScreen">⏳ Ładowanie strony, proszę czekać...</div>
 
-<h1>🎬 Lista Filmów</h1>
+<h1>🎬 Moje Filmy</h1>
 <div id="videos"></div>
 
 <!-- PANEL ADMINA -->
@@ -151,7 +151,7 @@ input, textarea, button {
 
         <input id="title" placeholder="Tytuł filmu">
         <textarea id="link" placeholder="Wklej iframe"></textarea>
-        <input type="file" id="thumb" accept="image/*">
+        <input id="thumb" placeholder="np. miniatura1.jpg">
 
         <button onclick="addVideo()">➕ Dodaj film</button>
         <button id="toggleDelete" onclick="toggleDelete()">🗑️ Tryb usuwania: OFF</button>
@@ -160,17 +160,14 @@ input, textarea, button {
 </div>
 
 <script>
-/* ADMIN */
 let buffer = "";
 let admin = false;
 let deleteMode = false;
 
-/* ELEMENTY */
 const videosBox = document.getElementById("videos");
 const panel = document.getElementById("panel");
 const loadingScreen = document.getElementById("loadingScreen");
 
-/* ADMIN HOTKEY */
 document.addEventListener("keydown", e => {
     buffer += e.key;
     if (buffer.includes("1725")) {
@@ -183,11 +180,9 @@ document.addEventListener("keydown", e => {
     if (buffer.length > 4) buffer = buffer.slice(-4);
 });
 
-/* PANEL */
 function openPanel() { panel.style.display = "block"; }
 function closePanel() { panel.style.display = "none"; }
 
-/* DELETE MODE */
 function toggleDelete() {
     deleteMode = !deleteMode;
     updateToggle();
@@ -200,28 +195,22 @@ function updateToggle() {
     btn.classList.toggle("active", deleteMode);
 }
 
-/* ADD VIDEO */
 function addVideo() {
     const title = document.getElementById("title").value.trim();
     const link = document.getElementById("link").value.trim();
-    const file = document.getElementById("thumb").files[0];
+    const thumb = document.getElementById("thumb").value.trim();
 
-    if (!title || !link || !file) {
+    if (!title || !link || !thumb) {
         alert("Wszystkie pola są wymagane!");
         return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-        const data = JSON.parse(localStorage.getItem("videos")) || [];
-        data.push({ title, link, thumb: reader.result });
-        localStorage.setItem("videos", JSON.stringify(data));
-        loadVideos();
-    };
-    reader.readAsDataURL(file);
+    const data = JSON.parse(localStorage.getItem("videos")) || [];
+    data.push({ title, link, thumb });
+    localStorage.setItem("videos", JSON.stringify(data));
+    loadVideos();
 }
 
-/* DELETE */
 function deleteVideo(i) {
     if (!deleteMode) return;
     if (!confirm("Usunąć film?")) return;
@@ -231,7 +220,6 @@ function deleteVideo(i) {
     loadVideos();
 }
 
-/* LOAD PLAYER ON CLICK */
 function attachPlayers() {
     document.querySelectorAll(".player").forEach(player => {
         player.addEventListener("click", () => {
@@ -241,7 +229,6 @@ function attachPlayers() {
     });
 }
 
-/* PRELOAD IFRAMES */
 function preloadIframes(videos) {
     let loaded = 0;
     if (videos.length === 0) {
@@ -250,9 +237,12 @@ function preloadIframes(videos) {
     }
 
     videos.forEach(v => {
+        const src = v.link.match(/src="([^"]+)"/)?.[1];
+        if (!src) return;
+
         const temp = document.createElement("iframe");
         temp.style.display = "none";
-        temp.src = v.link.match(/src="([^"]+)"/)?.[1] || "";
+        temp.src = src;
         temp.onload = () => {
             loaded++;
             if (loaded === videos.length) {
@@ -263,7 +253,6 @@ function preloadIframes(videos) {
     });
 }
 
-/* LOAD VIDEOS */
 function loadVideos() {
     videosBox.innerHTML = "";
     const data = JSON.parse(localStorage.getItem("videos")) || [];
@@ -287,7 +276,6 @@ function loadVideos() {
     preloadIframes(data);
 }
 
-/* INIT */
 loadVideos();
 </script>
 
