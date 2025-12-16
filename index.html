@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Lista filmów</title>
+
+<style>
+/* LOADING SCREEN */
+#loadingScreen {
+    position: fixed;
+    inset: 0;
+    background: #000;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4em;
+    z-index: 2000;
+}
+
+/* BASIC */
+body {
+    background: #0f0f0f;
+    color: #fff;
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+}
+
+h1 {
+    text-align: center;
+}
+
+/* VIDEO CARD */
+.video {
+    max-width: 800px;
+    margin: 0 auto 30px;
+}
+
+/* PLAYER */
+.player {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #000;
+    cursor: pointer;
+}
+
+/* MINIATURA */
+.thumbnail {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* OVERLAY */
+.overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        to bottom,
+        rgba(0,0,0,0.7),
+        rgba(0,0,0,0.2),
+        rgba(0,0,0,0.8)
+    );
+}
+
+/* TITLE */
+.videoTitle {
+    position: absolute;
+    top: 12px;
+    left: 15px;
+    font-size: 1.1em;
+    font-weight: bold;
+}
+
+/* PLAY */
+.playBtn {
+    position: absolute;
+    right: 20px;
+    bottom: 20px;
+    width: 64px;
+    height: 64px;
+    background: rgba(0,0,0,0.7);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+}
+
+/* DELETE */
+.deleteBtn {
+    width: 100%;
+    margin-top: 10px;
+    padding: 10px;
+    background: #c0392b;
+    border: none;
+    color: #fff;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+/* PANEL */
+#panel {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.95);
+    z-index: 1500;
+    padding: 20px;
+}
+
+#panelContent {
+    max-width: 500px;
+    margin: auto;
+    background: #1e1e1e;
+    padding: 20px;
+    border-radius: 14px;
+}
+
+input, textarea, button {
+    width: 100%;
+    margin: 10px 0;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 1em;
+}
+
+.toggle.active {
+    background: #27ae60;
+}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loadingScreen">⏳ Ładowanie strony, proszę czekać...</div>
+
+<h1>🎬 Lista Filmów</h1>
+<div id="videos"></div>
+
+<!-- PANEL ADMINA -->
+<div id="panel">
+    <div id="panelContent">
+        <h2>Panel admina</h2>
+
+        <input id="title" placeholder="Tytuł filmu">
+        <textarea id="link" placeholder="Wklej iframe"></textarea>
+        <input type="file" id="thumb" accept="image/*">
+
+        <button onclick="addVideo()">➕ Dodaj film</button>
+        <button id="toggleDelete" onclick="toggleDelete()">🗑️ Tryb usuwania: OFF</button>
+        <button onclick="closePanel()">❌ Zamknij</button>
+    </div>
+</div>
+
+<script>
+/* ADMIN */
+let buffer = "";
+let admin = false;
+let deleteMode = false;
+
+/* ELEMENTY */
+const videosBox = document.getElementById("videos");
+const panel = document.getElementById("panel");
+const loadingScreen = document.getElementById("loadingScreen");
+
+/* ADMIN HOTKEY */
+document.addEventListener("keydown", e => {
+    buffer += e.key;
+    if (buffer.includes("1725")) {
+        admin = true;
+        openPanel();
+        updateToggle();
+        loadVideos();
+        buffer = "";
+    }
+    if (buffer.length > 4) buffer = buffer.slice(-4);
+});
+
+/* PANEL */
+function openPanel() { panel.style.display = "block"; }
+function closePanel() { panel.style.display = "none"; }
+
+/* DELETE MODE */
+function toggleDelete() {
+    deleteMode = !deleteMode;
+    updateToggle();
+    loadVideos();
+}
+
+function updateToggle() {
+    const btn = document.getElementById("toggleDelete");
+    btn.textContent = deleteMode ? "🗑️ Tryb usuwania: ON" : "🗑️ Tryb usuwania: OFF";
+    btn.classList.toggle("active", deleteMode);
+}
+
+/* ADD VIDEO */
+function addVideo() {
+    const title = document.getElementById("title").value.trim();
+    const link = document.getElementById("link").value.trim();
+    const file = document.getElementById("thumb").files[0];
+
+    if (!title || !link || !file) {
+        alert("Wszystkie pola są wymagane!");
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+        const data = JSON.parse(localStorage.getItem("videos")) || [];
+        data.push({ title, link, thumb: reader.result });
+        localStorage.setItem("videos", JSON.stringify(data));
+        loadVideos();
+    };
+    reader.readAsDataURL(file);
+}
+
+/* DELETE */
+function deleteVideo(i) {
+    if (!deleteMode) return;
+    if (!confirm("Usunąć film?")) return;
+    const data = JSON.parse(localStorage.getItem("videos")) || [];
+    data.splice(i, 1);
+    localStorage.setItem("videos", JSON.stringify(data));
+    loadVideos();
+}
+
+/* LOAD PLAYER ON CLICK */
+function attachPlayers() {
+    document.querySelectorAll(".player").forEach(player => {
+        player.addEventListener("click", () => {
+            const iframe = decodeURIComponent(player.dataset.iframe);
+            player.innerHTML = iframe;
+        });
+    });
+}
+
+/* PRELOAD IFRAMES */
+function preloadIframes(videos) {
+    let loaded = 0;
+    if (videos.length === 0) {
+        loadingScreen.style.display = "none";
+        return;
+    }
+
+    videos.forEach(v => {
+        const temp = document.createElement("iframe");
+        temp.style.display = "none";
+        temp.src = v.link.match(/src="([^"]+)"/)?.[1] || "";
+        temp.onload = () => {
+            loaded++;
+            if (loaded === videos.length) {
+                loadingScreen.style.display = "none";
+            }
+        };
+        document.body.appendChild(temp);
+    });
+}
+
+/* LOAD VIDEOS */
+function loadVideos() {
+    videosBox.innerHTML = "";
+    const data = JSON.parse(localStorage.getItem("videos")) || [];
+
+    data.forEach((v, i) => {
+        const div = document.createElement("div");
+        div.className = "video";
+        div.innerHTML = `
+            <div class="player" data-iframe="${encodeURIComponent(v.link)}">
+                <img src="${v.thumb}" class="thumbnail">
+                <div class="overlay"></div>
+                <div class="videoTitle">${v.title}</div>
+                <div class="playBtn">▶</div>
+            </div>
+            ${admin && deleteMode ? `<button class="deleteBtn" onclick="deleteVideo(${i})">Usuń</button>` : ""}
+        `;
+        videosBox.appendChild(div);
+    });
+
+    attachPlayers();
+    preloadIframes(data);
+}
+
+/* INIT */
+loadVideos();
+</script>
+
+</body>
+</html>
